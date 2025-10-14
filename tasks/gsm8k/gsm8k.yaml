@@ -4,9 +4,12 @@ info:
   default_eval_type: generation
 
 data:
-  repo: hf
+  repo_type: hf
   path: openai/gsm8k
   subset: main
   split: test
-  question: question
-  answer: answer 
+  question_column: 
+    - question
+  answer_column: 
+    - answer 
+  only_answer: false
