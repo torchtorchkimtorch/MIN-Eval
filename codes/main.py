@@ -4,6 +4,7 @@ from transformers import AutoTokenizer
 from tqdm import tqdm
 from .vllm import VLLM
 from setproctitle import setproctitle
+import json
 
 from .utils import args_exp_parser, eval_config_printer, code_maker
 from .data import DataLoader
@@ -70,8 +71,21 @@ class Eval:
                 target = Verify(self.configs[i], self.boxed_prompt, curr_answer, generated_text)
                 result = target.tf_verify()
                 correct += result
-            print(correct / total)
-            with open(os.path.join(self.output_dir, f"/{self.configs[i]['task']}/",f"{self.model}",f"_{result_code}.json"), "w") as f:
-                # result code
-                
-                
+            acc = correct / total
+            acc_str = f"{acc:.4f}"
+            print(acc)
+            with open(os.path.join(self.output_dir, f"/{self.configs[i]['task']}/", f"{self.model}", f"_{result_code}.json"), "w") as f:
+                json.dump({
+                    "model": self.model,
+                    "task": self.configs[i]['task'],
+                    "hyperparameters": {
+                        "temperature": self.temperature,
+                        "top_k": self.top_k,
+                        "top_p": self.top_p,
+                        "max_tokens": self.max_tokens,
+                        "seed": self.seed,
+                    },
+                    "result": {
+                        "correct": correct,
+                        "total": total,
+                        "accuracy": acc_str}}, f)       

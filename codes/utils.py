@@ -175,7 +175,7 @@ def yaml_parser(yaml_path):
 
     with open(yaml_path, "r") as file:
         config = yaml.safe_load(file)
-    task = config["info"]["task"]
+    task = config["info"]["tasks"]
     type = config["info"]["type"]
     default_eval_type = config["info"]["default_eval_type"]
     repo_type = config["data"]["repo_type"]

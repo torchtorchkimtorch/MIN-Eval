@@ -1,5 +1,5 @@
 info:
-  name: gsm8k
+  tasks: gsm8k
   type: math
   default_eval_type: generation
 
