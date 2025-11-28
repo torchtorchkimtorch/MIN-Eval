@@ -15,6 +15,7 @@ class VLLM:
         top_p,
         max_tokens,
         seed,
+        n_repetitions=1,
     ):
         self.model = model
         self.device = device
@@ -25,11 +26,15 @@ class VLLM:
         self.top_p = top_p
         self.max_tokens = max_tokens
         self.seed = seed
+        self.n_repetitions = n_repetitions
 
     def generate(self, tokenized_templates):
         if not self.tensor_parallel:
             try:
-                llm = LLM(model=self.model)
+                llm = LLM(
+                    model=self.model,
+                    max_num_seqs=self.max_batch_size,
+                          )
             except Exception as e:
                 raise ValueError(
                     "Model not found. Please check the model name or path."
@@ -55,6 +60,7 @@ class VLLM:
             top_p=self.top_p,
             max_tokens=self.max_tokens,
             seed=self.seed,
+            n=self.n_repetitions,  # Generate n responses per prompt
         )
 
         all_outputs = []

@@ -1,0 +1,15 @@
+info:
+  tasks: aime2025
+  type: math
+  default_eval_type: generation
+
+data:
+  repo_type: hf
+  path: math-ai/aime25
+  subset: ""
+  split: test
+  question_column: 
+    - problem
+  answer_column: 
+    - answer 
+  only_answer: false

@@ -131,6 +131,12 @@ def args_exp_parser(args, arg_name) -> Union[str, List[str], int]:
         else:
             raise ValueError(f"Invalid boxed_prompt argument: {args.boxed_prompt}")
 
+    elif arg_name == "n_repetitions":
+        if isinstance(args.n_repetitions, int) and args.n_repetitions > 0:
+            return args.n_repetitions
+        else:
+            raise ValueError(f"Invalid n_repetitions argument: {args.n_repetitions}")
+
     else:
         raise ValueError(f"Not Implemented: {arg_name}")
 
@@ -210,7 +216,7 @@ def make_chat_template(system_prompt, question):
 
 
 def answerParser(task, answer):
-    if task == "gsm8k":
+    if task in ["gsm8k", "aime2025"]:
         return answer.split("####")[-1].strip()
     else:
         raise NotImplementedError(f"function answerParser in utils.py was not implemented for task: {task}")

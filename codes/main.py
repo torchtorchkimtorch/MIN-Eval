@@ -27,6 +27,7 @@ class Eval:
         self.seed = args_exp_parser(args, "seed")
         self.system_prompt = args_exp_parser(args, "system_prompt")
         self.boxed_prompt = args_exp_parser(args, "boxed_prompt")
+        self.n_repetitions = args_exp_parser(args, "n_repetitions")
 
         # args for etc
         self.setproctitle = args_exp_parser(args, "setproctitle")
@@ -56,25 +57,59 @@ class Eval:
             top_p=self.top_p,
             max_tokens=self.max_tokens,
             seed=self.seed,
+            n_repetitions=self.n_repetitions,
         )
         
         for i, data in enumerate(self.datas):
             result_code = code_maker()
             outputs = vllm.generate(data)
-            total = 0
-            correct = 0
+
+            # For pass@k evaluation
+            total_problems = 0
+            correct_problems = 0  # pass@k (at least one correct among k attempts)
+            all_correct = 0  # Total correct answers across all repetitions
+
+            # Each output contains n_repetitions completions in output.outputs list
             for j, output in enumerate(outputs):
-                total += 1
-                prompt = output.prompt
-                generated_text = output.outputs[0].text
+                total_problems += 1
                 curr_answer = self.answers[i][j]
-                target = Verify(self.configs[i], self.boxed_prompt, curr_answer, generated_text)
-                result = target.tf_verify()
-                correct += result
-            acc = correct / total
-            acc_str = f"{acc:.4f}"
-            print(acc)
-            with open(os.path.join(self.output_dir, f"/{self.configs[i]['task']}/", f"{self.model}", f"_{result_code}.json"), "w") as f:
+
+                # Check all n_repetitions for this problem
+                problem_correct = False
+
+                # output.outputs is a list of CompletionOutput objects (length = n_repetitions)
+                for completion_output in output.outputs:
+                    generated_text = completion_output.text
+                    target = Verify(self.configs[i], self.boxed_prompt, curr_answer, generated_text)
+                    result = target.tf_verify()
+
+                    if result == 1:
+                        problem_correct = True
+                        all_correct += 1
+
+                if problem_correct:
+                    correct_problems += 1
+
+            # Calculate metrics
+            pass_at_k = correct_problems / total_problems if total_problems > 0 else 0
+            avg_accuracy = all_correct / (total_problems * self.n_repetitions) if total_problems > 0 else 0
+
+            pass_at_k_str = f"{pass_at_k:.4f}"
+            avg_acc_str = f"{avg_accuracy:.4f}"
+
+            print(f"Pass@{self.n_repetitions}: {pass_at_k_str}")
+            print(f"Average Accuracy: {avg_acc_str}")
+
+            # Create output directory if it doesn't exist
+            output_path = os.path.join("/mnt/raid6/mhkim0929/fitr/MIN-Eval/results",
+                                      f"{self.configs[i]['task']}",
+                                      os.path.basename(self.model))
+            os.makedirs(output_path, exist_ok=True)
+
+            # Save results with timestamp and n_repetitions in filename
+            output_file = os.path.join(output_path, f"pass_at_{self.n_repetitions}_{result_code}.json")
+
+            with open(output_file, "w") as f:
                 json.dump({
                     "model": self.model,
                     "task": self.configs[i]['task'],
@@ -84,8 +119,14 @@ class Eval:
                         "top_p": self.top_p,
                         "max_tokens": self.max_tokens,
                         "seed": self.seed,
+                        "n_repetitions": self.n_repetitions,
                     },
                     "result": {
-                        "correct": correct,
-                        "total": total,
-                        "accuracy": acc_str}}, f)       
+                        "pass_at_k": pass_at_k_str,
+                        "average_accuracy": avg_acc_str,
+                        "correct_problems": correct_problems,
+                        "total_problems": total_problems,
+                        "total_correct_answers": all_correct,
+                        "total_answers": total_problems * self.n_repetitions,
+                    }
+                }, f)
